@@ -238,6 +238,16 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) dispatch_queue_t processingQueue;
 
 /**
+ @brief      Stores reference on queue which is used to call \b PNNetwork response parsing on another 
+             queue.
+ @discussion Response processing involves data parsing which is most time consuming operation. Dispatching 
+             response processing on side queue allow to keep requests sending unaffected by processing delays.
+ 
+ */
+ @property (nonatomic, strong) dispatch_queue_t parsingQueue;
+
+
+/**
  @brief  Stores reference on spin-lock which is used to protect access to session instance which can be 
          changed at any moment (invalidated instances can't be used and SDK should instantiate new instance).
  
@@ -650,6 +660,8 @@ NS_ASSUME_NONNULL_END
 #pragma clang diagnostic pop
         [self prepareRequiredParameters];
         [self prepareSessionWithRequestTimeout:timeout maximumConnections:maximumConnections];
+        dispatch_queue_attr_t queueAttributes = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_DEFAULT, 0);
+        _parsingQueue = dispatch_queue_create("com.pubnub.network.parsingQueue", queueAttributes);
     }
     
     return self;
@@ -910,13 +922,9 @@ NS_ASSUME_NONNULL_END
         
         // If additional data required client should assume what potentially additional calculations
         // may be required and should temporarily shift to background queue.
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
-
+        dispatch_async(_parsingQueue, ^{
             NSDictionary *parsedData = [parser parsedServiceResponse:data withData:additionalData];
-            pn_dispatch_async(self.processingQueue, ^{
-                
-                parseCompletion(parsedData);
-            });
+			         parseCompletion(parsedData);
         });
     }
 }
