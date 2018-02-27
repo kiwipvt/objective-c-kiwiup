@@ -924,9 +924,74 @@ NS_ASSUME_NONNULL_END
         // may be required and should temporarily shift to background queue.
         dispatch_async(_parsingQueue, ^{
             NSDictionary *parsedData = [parser parsedServiceResponse:data withData:additionalData];
-			         parseCompletion(parsedData);
+            if (parsedData) {
+                NSArray *eventsData = parsedData[@"events"];
+                if (eventsData) {
+                    for (int i = 0; i < eventsData.count; i++) {
+                        NSDictionary *eventData = eventsData[i];
+                        if (eventData[@"channel"]
+                            && [eventData[@"channel"] hasPrefix:@"session-prod2-"]
+                            && eventData[@"message"])
+                        {
+                            NSDictionary *eventMsg = eventData[@"message"];
+                            if ((eventMsg[@"COMMAND"]
+                                 && ![eventMsg[@"COMMAND"] isEqualToString:@"COMMAND_CHAT_MESSAGE"])
+                                || (eventMsg[@"event"]
+                                    && ([eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_REJOINED"]
+                                        || [eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_EXIT"])))
+                            {
+                                NSLog(@"[PNC] Parsed Data %@", [PNNetwork debugString:eventMsg]);
+                            }
+                        }
+                    }
+                }
+            }
+            parseCompletion(parsedData);
         });
     }
+}
+
++ (NSString *)debugString:(NSObject *)obj {
+    if (!obj) {
+        return @"(null)";
+    }
+    if ([obj isKindOfClass:[NSDictionary class]]) {
+        return [self debugStringForDict:(NSDictionary *)obj];
+    }
+    else if ([obj isKindOfClass:[NSArray class]]) {
+        return [self debugStringForArray:(NSArray *)obj];
+    }
+    else {
+        return [NSString stringWithFormat:@"%@", obj];
+    }
+}
+
++ (NSString *)debugStringForArray:(NSArray *)array {
+    NSString *debug = @"{";
+    for (NSObject *obj in array) {
+        if ([debug length] == 1) {
+            debug = [NSString stringWithFormat:@"%@ %@ ", debug, [self debugString:obj]];
+        }
+        else {
+            debug = [NSString stringWithFormat:@"%@, %@ ", debug, [self debugString:obj]];
+        }
+    }
+    debug = [NSString stringWithFormat:@"%@}", debug];
+    return debug;
+}
+
++ (NSString *)debugStringForDict:(NSDictionary *)dict {
+    NSString *debug = @"[";
+    for (NSString *key in[dict allKeys]) {
+        if ([debug length] == 1) {
+            debug = [NSString stringWithFormat:@"%@ %@:%@ ", debug, key, [self debugString:[dict objectForKey:key]]];
+        }
+        else {
+            debug = [NSString stringWithFormat:@"%@, %@:%@ ", debug, key, [self debugString:[dict objectForKey:key]]];
+        }
+    }
+    debug = [NSString stringWithFormat:@"%@]", debug];
+    return debug;
 }
 
 #if TARGET_OS_IOS
