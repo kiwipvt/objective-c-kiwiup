@@ -930,7 +930,7 @@ NS_ASSUME_NONNULL_END
         dispatch_async(_parsingQueue, ^{
             NSDictionary *parsedData = [parser parsedServiceResponse:data withData:additionalData];
             @try {
-                if (parsedData) {
+                if (parsedData && self.pubnubDebugLogDelegate) {
                     NSArray *eventsData = parsedData[@"events"];
                     if (eventsData) {
                         for (int i = 0; i < eventsData.count; i++) {
@@ -947,9 +947,7 @@ NS_ASSUME_NONNULL_END
                                         && ([eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_REJOINED"]
                                             || [eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_EXIT"])))
                                 {
-                                    if (self.pubnubDebugLogDelegate) {
-                                        [self.pubnubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC] Parsed Data %@", [PNNetwork debugString:eventMsg]]];
-                                    }
+                                    [self.pubnubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC][PNNetwork] Parsed Data %@", [PNNetwork debugString:eventMsg]]];
                                 }
                             }
                         }
