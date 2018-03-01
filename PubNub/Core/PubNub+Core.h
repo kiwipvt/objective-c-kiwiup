@@ -36,7 +36,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @property (nonatomic, readonly, strong) PNLLogger *logger;
 
-@property (nonatomic, readonly, strong) id<PubNubDebugLogDelegate> pubNubDebugLogDelegate;
+@property (nonatomic, strong) id<PubNubDebugLogDelegate> pubNubDebugLogDelegate;
 
 /**
  @brief  Retrive basic information about \b PubNub client.
