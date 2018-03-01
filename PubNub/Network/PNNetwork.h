@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import "PNStructures.h"
+#import "PubNubDebugLogDelegate.h"
 
 
 #pragma mark Class forward
@@ -39,7 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
  @since Constructed and ready to use \b PubNub network manager.
  */
 + (instancetype)networkForClient:(PubNub *)client requestTimeout:(NSTimeInterval)timeout
-              maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled;
+              maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>) pubnubDebugLogDelegate;
 
 
 ///------------------------------------------------

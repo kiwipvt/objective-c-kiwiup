@@ -242,9 +242,13 @@ NS_ASSUME_NONNULL_BEGIN
              queue.
  @discussion Response processing involves data parsing which is most time consuming operation. Dispatching 
              response processing on side queue allow to keep requests sending unaffected by processing delays.
- 
  */
  @property (nonatomic, strong) dispatch_queue_t parsingQueue;
+
+/**
+ @brief      Delegate for debug info
+ */
+@property (nonatomic, weak) id <PubNubDebugLogDelegate> pubnubDebugLogDelegate;
 
 
 /**
@@ -275,7 +279,7 @@ NS_ASSUME_NONNULL_BEGIN
  @since Initialized and ready to use \b PubNub network manager.
  */
 - (instancetype)initForClient:(PubNub *)client requestTimeout:(NSTimeInterval)timeout
-           maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled;
+           maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>) pubnubDebugLogDelegate;
 
 
 #pragma mark - Request helper
@@ -620,20 +624,21 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Initialization and Configuration
 
 + (instancetype)networkForClient:(PubNub *)client requestTimeout:(NSTimeInterval)timeout
-              maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled {
+              maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>)pubnubDebugLogDelegate {
     
     return [[self alloc] initForClient:client requestTimeout:timeout maximumConnections:maximumConnections 
-                              longPoll:longPollEnabled];
+                              longPoll:longPollEnabled andPubNubDebugLogDelegate:pubnubDebugLogDelegate];
 }
 
 - (instancetype)initForClient:(PubNub *)client requestTimeout:(NSTimeInterval)timeout
-           maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled {
+           maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>) pubnubDebugLogDelegate {
     
     // Check whether initialization was successful or not.
     if ((self = [super init])) {
         
         _client = client;
         [_client.logger enableLogLevel:(PNRequestLogLevel|PNInfoLogLevel)];
+        _pubnubDebugLogDelegate = pubnubDebugLogDelegate;
         _metricsNotSupportedByOS = pn_operating_system_version_is_lower_than(PN_URLSESSION_TRANSACTION_METRICS_AVAILABLE_SINCE);
         _configuration = client.configuration;
         _forLongPollRequests = longPollEnabled;
@@ -924,28 +929,37 @@ NS_ASSUME_NONNULL_END
         // may be required and should temporarily shift to background queue.
         dispatch_async(_parsingQueue, ^{
             NSDictionary *parsedData = [parser parsedServiceResponse:data withData:additionalData];
-            if (parsedData) {
-                NSArray *eventsData = parsedData[@"events"];
-                if (eventsData) {
-                    for (int i = 0; i < eventsData.count; i++) {
-                        NSDictionary *eventData = eventsData[i];
-                        if (eventData[@"channel"]
-                            && [eventData[@"channel"] hasPrefix:@"session-prod2-"]
-                            && eventData[@"message"])
-                        {
-                            NSDictionary *eventMsg = eventData[@"message"];
-                            if ((eventMsg[@"COMMAND"]
-                                 && ![eventMsg[@"COMMAND"] isEqualToString:@"COMMAND_CHAT_MESSAGE"])
-                                || (eventMsg[@"event"]
-                                    && ([eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_REJOINED"]
-                                        || [eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_EXIT"])))
+            @try {
+                if (parsedData) {
+                    NSArray *eventsData = parsedData[@"events"];
+                    if (eventsData) {
+                        for (int i = 0; i < eventsData.count; i++) {
+                            NSDictionary *eventData = eventsData[i];
+                            if (eventData[@"channel"]
+                                && [eventData[@"channel"] hasPrefix:@"session-prod2-"]
+                                && eventData[@"message"]
+                                && [eventData[@"message"] isKindOfClass:[NSDictionary class]])
                             {
-                                NSLog(@"[PNC] Parsed Data %@", [PNNetwork debugString:eventMsg]);
+                                NSDictionary *eventMsg = eventData[@"message"];
+                                if ((eventMsg[@"COMMAND"]
+                                     && ![eventMsg[@"COMMAND"] isEqualToString:@"COMMAND_CHAT_MESSAGE"])
+                                    || (eventMsg[@"event"]
+                                        && ([eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_REJOINED"]
+                                            || [eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_EXIT"])))
+                                {
+                                    if (self.pubnubDebugLogDelegate) {
+                                        [self.pubnubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC] Parsed Data %@", [PNNetwork debugString:eventMsg]]];
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+            @catch (NSException *ex) {
+                NSLog(@"%@", ex);
+            }
+            
             parseCompletion(parsedData);
         });
     }
