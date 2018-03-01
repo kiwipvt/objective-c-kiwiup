@@ -33,7 +33,6 @@
 #import "PNLogMacro.h"
 #import "PNNetwork.h"
 #import "PNHelpers.h"
-#import "PubNubDebugLogDelegate.h"
 
 
 #pragma mark - Externs
@@ -125,15 +124,13 @@ NS_ASSUME_NONNULL_BEGIN
                       client should operate and handle events.
  @param callbackQueue Reference on queue which should be used by client fot comletion block and 
                       delegate calls.
- @param pubnubLogDelegate reference to pubnub debug log delegate
 
  @return Initialized and ready to use \b PubNub client.
  
  @since 4.0
 */
 - (instancetype)initWithConfiguration:(PNConfiguration *)configuration
-                        callbackQueue:(nullable dispatch_queue_t)callbackQueue
-            andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>)pubnubLogDelegate;
+                        callbackQueue:(nullable dispatch_queue_t)callbackQueue;
 
 
 #pragma mark - Reachability
@@ -153,7 +150,7 @@ NS_ASSUME_NONNULL_BEGIN
  
  @since 4.0
  */
-- (void)prepareNetworkManagers:(id<PubNubDebugLogDelegate>)pubnubDebugLogDelegate;
+- (void)prepareNetworkManagers;
 
 
 #pragma mark - Handlers
@@ -237,15 +234,13 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - Initialization
 
-+ (instancetype)clientWithConfiguration:(PNConfiguration *)configuration
-              andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>)pubnubDebugLogDelegate {
++ (instancetype)clientWithConfiguration:(PNConfiguration *)configuration {
     
-    return [self clientWithConfiguration:configuration callbackQueue:nil andPubNubDebugLogDelegate:pubnubDebugLogDelegate];
+    return [self clientWithConfiguration:configuration callbackQueue:nil];
 }
 
 + (instancetype)clientWithConfiguration:(PNConfiguration *)configuration
-                          callbackQueue:(dispatch_queue_t)callbackQueue
-              andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>)pubnubDebugLogDelegate  {
+                          callbackQueue:(dispatch_queue_t)callbackQueue {
     
     dispatch_queue_t queue = (callbackQueue?: dispatch_get_main_queue());
     if (@available(macOS 10.10, iOS 8.0, *)) {
@@ -254,12 +249,11 @@ NS_ASSUME_NONNULL_END
         }
     }
     
-    return [[self alloc] initWithConfiguration:configuration callbackQueue:queue andPubNubDebugLogDelegate:pubnubDebugLogDelegate];
+    return [[self alloc] initWithConfiguration:configuration callbackQueue:queue];
 }
 
 - (instancetype)initWithConfiguration:(PNConfiguration *)configuration
-                        callbackQueue:(dispatch_queue_t)callbackQueue
-            andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>)pubnubDebugLogDelegate {
+                        callbackQueue:(dispatch_queue_t)callbackQueue {
     
     // Check whether initialization has been successful or not
     if ((self = [super init])) {
@@ -277,7 +271,7 @@ NS_ASSUME_NONNULL_END
             
             _instanceID = [@"58EB05C9-9DE4-4118-B5D7-EE059FBF19A9" copy];
         }
-        [self prepareNetworkManagers:pubnubDebugLogDelegate];
+        [self prepareNetworkManagers];
         [self notifyDeprecatedAPI];
         
         _subscriberManager = [PNSubscriber subscriberForClient:self];
@@ -317,18 +311,16 @@ NS_ASSUME_NONNULL_END
 }
 
 - (void)copyWithConfiguration:(PNConfiguration *)configuration
-                   completion:(void(^)(PubNub *client))block
-    andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>)pubnubDebugLogDelegate {
+                   completion:(void(^)(PubNub *client))block {
 
-    [self copyWithConfiguration:configuration callbackQueue:self.callbackQueue completion:block andPubNubDebugLogDelegate:pubnubDebugLogDelegate];
+    [self copyWithConfiguration:configuration callbackQueue:self.callbackQueue completion:block];
 }
 
 - (void)copyWithConfiguration:(PNConfiguration *)configuration
                 callbackQueue:(dispatch_queue_t)callbackQueue
-                   completion:(void(^)(PubNub *client))block
-    andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>)pubnubDebugLogDelegate {
+                   completion:(void(^)(PubNub *client))block {
     
-    PubNub *client = [PubNub clientWithConfiguration:configuration callbackQueue:callbackQueue andPubNubDebugLogDelegate:pubnubDebugLogDelegate];
+    PubNub *client = [PubNub clientWithConfiguration:configuration callbackQueue:callbackQueue];
     [client.subscriberManager inheritStateFromSubscriber:self.subscriberManager];
     [client.clientStateManager inheritStateFromState:self.clientStateManager];
     [client.listenersManager inheritStateFromListener:self.listenersManager];
@@ -435,7 +427,7 @@ NS_ASSUME_NONNULL_END
 
 #pragma mark - PubNub Network managers
 
-- (void)prepareNetworkManagers:(id<PubNubDebugLogDelegate>)pubnubDebugLogDelegate {
+- (void)prepareNetworkManagers {
     
     // Check whether application extension support enabled or not.
     // Long-poll tasks not supported in application extension context.
@@ -450,14 +442,14 @@ NS_ASSUME_NONNULL_END
         
         _subscriptionNetwork = [PNNetwork networkForClient:self
                                             requestTimeout:_configuration.subscribeMaximumIdleTime
-                                        maximumConnections:1 longPoll:YES andPubNubDebugLogDelegate:pubnubDebugLogDelegate];
+                                        maximumConnections:1 longPoll:YES];
     }
 
 
     _serviceNetwork = [PNNetwork networkForClient:self
                                    requestTimeout:_configuration.nonSubscribeRequestTimeout
                                maximumConnections:maximumConnections
-                                         longPoll:NO andPubNubDebugLogDelegate:pubnubDebugLogDelegate];
+                                         longPoll:NO];
 }
 
 

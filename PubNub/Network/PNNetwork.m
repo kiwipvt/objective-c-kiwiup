@@ -242,13 +242,9 @@ NS_ASSUME_NONNULL_BEGIN
              queue.
  @discussion Response processing involves data parsing which is most time consuming operation. Dispatching 
              response processing on side queue allow to keep requests sending unaffected by processing delays.
+ 
  */
  @property (nonatomic, strong) dispatch_queue_t parsingQueue;
-
-/**
- @brief      Delegate for debug info
- */
-@property (nonatomic, weak) id <PubNubDebugLogDelegate> pubnubDebugLogDelegate;
 
 
 /**
@@ -279,7 +275,7 @@ NS_ASSUME_NONNULL_BEGIN
  @since Initialized and ready to use \b PubNub network manager.
  */
 - (instancetype)initForClient:(PubNub *)client requestTimeout:(NSTimeInterval)timeout
-           maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>) pubnubDebugLogDelegate;
+           maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled;
 
 
 #pragma mark - Request helper
@@ -624,21 +620,20 @@ NS_ASSUME_NONNULL_END
 #pragma mark - Initialization and Configuration
 
 + (instancetype)networkForClient:(PubNub *)client requestTimeout:(NSTimeInterval)timeout
-              maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>)pubnubDebugLogDelegate {
+              maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled {
     
     return [[self alloc] initForClient:client requestTimeout:timeout maximumConnections:maximumConnections 
-                              longPoll:longPollEnabled andPubNubDebugLogDelegate:pubnubDebugLogDelegate];
+                              longPoll:longPollEnabled];
 }
 
 - (instancetype)initForClient:(PubNub *)client requestTimeout:(NSTimeInterval)timeout
-           maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>) pubnubDebugLogDelegate {
+           maximumConnections:(NSInteger)maximumConnections longPoll:(BOOL)longPollEnabled {
     
     // Check whether initialization was successful or not.
     if ((self = [super init])) {
         
         _client = client;
         [_client.logger enableLogLevel:(PNRequestLogLevel|PNInfoLogLevel)];
-        _pubnubDebugLogDelegate = pubnubDebugLogDelegate;
         _metricsNotSupportedByOS = pn_operating_system_version_is_lower_than(PN_URLSESSION_TRANSACTION_METRICS_AVAILABLE_SINCE);
         _configuration = client.configuration;
         _forLongPollRequests = longPollEnabled;
@@ -931,7 +926,7 @@ NS_ASSUME_NONNULL_END
         dispatch_async(_parsingQueue, ^{
             NSDictionary *parsedData = [parser parsedServiceResponse:data withData:additionalData];
             @try {
-                if (parsedData && self.pubnubDebugLogDelegate) {
+                if (parsedData && self.client.pubNubDebugLogDelegate) {
                     NSArray *eventsData = parsedData[@"events"];
                     if (eventsData) {
                         for (int i = 0; i < eventsData.count; i++) {
@@ -949,7 +944,7 @@ NS_ASSUME_NONNULL_END
                                             || [eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_EXIT"])))
                                 {
                                     NSTimeInterval timeTaken = [[NSDate date] timeIntervalSinceDate:beforeParsingQueueTime];
-                                    [self.pubnubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC][PNNetwork] Queue transfer time is %f and msg is %@", timeTaken, [PNNetwork debugString:eventMsg]]];
+                                    [self.client.pubNubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC][PNNetwork] Queue transfer time is %f and msg is %@", timeTaken, [PNNetwork debugString:eventMsg]]];
                                 }
                             }
                         }
@@ -957,9 +952,8 @@ NS_ASSUME_NONNULL_END
                 }
             }
             @catch (NSException *ex) {
-                [self.pubnubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC][PNNetwork] Exception in parsed data %@ %@", [PNNetwork debugString:parsedData], ex]];
+                [self.client.pubNubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC][PNNetwork] Exception in parsed data %@ %@", [PNNetwork debugString:parsedData], ex]];
             }
-            
             parseCompletion(parsedData);
         });
     }

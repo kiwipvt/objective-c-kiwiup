@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
 #import "PubNub+Core.h"
-#import "PubNubDebugLogDelegate.h"
+
 
 /**
  @brief      \b PubNub client core class extension to provide access to features powered by Fabric.
@@ -27,7 +27,7 @@
  
  @return Configured and ready to use \b PubNub client.
  */
-+ (instancetype)client andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>)pubnubDebugLogDelegate;
++ (instancetype)client;
 
 #pragma mark -
 

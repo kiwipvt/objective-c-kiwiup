@@ -15,7 +15,7 @@
 
 #pragma mark - Initialization and Configuration
 
-+ (instancetype)client andPubNubDebugLogDelegate:(id<PubNubDebugLogDelegate>)pubnubDebugLogDelegate {
++ (instancetype)client {
     
     PNConfiguration *configuration = nil;
     Class fabric = NSClassFromString(@"Fabric");
@@ -41,7 +41,7 @@
                     format:@"Incomplete project configuration. Fabric framework required."];
     }
     
-    return (configuration ? [PubNub clientWithConfiguration:configuration andPubNubDebugLogDelegate:pubnubDebugLogDelegate] : nil);
+    return (configuration ? [PubNub clientWithConfiguration:configuration] : nil);
 }
 
 #pragma mark - 
