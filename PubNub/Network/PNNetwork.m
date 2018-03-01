@@ -927,6 +927,7 @@ NS_ASSUME_NONNULL_END
         
         // If additional data required client should assume what potentially additional calculations
         // may be required and should temporarily shift to background queue.
+        NSDate *beforeParsingQueueTime = [NSDate date];
         dispatch_async(_parsingQueue, ^{
             NSDictionary *parsedData = [parser parsedServiceResponse:data withData:additionalData];
             @try {
@@ -947,7 +948,8 @@ NS_ASSUME_NONNULL_END
                                         && ([eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_REJOINED"]
                                             || [eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_EXIT"])))
                                 {
-                                    [self.pubnubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC][PNNetwork] Parsed Data %@", [PNNetwork debugString:eventMsg]]];
+                                    NSTimeInterval timeTaken = [[NSDate date] timeIntervalSinceDate:beforeParsingQueueTime];
+                                    [self.pubnubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC][PNNetwork] Queue transfer time is %f and msg is %@", timeTaken, [PNNetwork debugString:eventMsg]]];
                                 }
                             }
                         }
@@ -955,7 +957,7 @@ NS_ASSUME_NONNULL_END
                 }
             }
             @catch (NSException *ex) {
-                NSLog(@"%@", ex);
+                [self.pubnubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC][PNNetwork] Exception in parsed data %@ %@", [PNNetwork debugString:parsedData], ex]];
             }
             
             parseCompletion(parsedData);
