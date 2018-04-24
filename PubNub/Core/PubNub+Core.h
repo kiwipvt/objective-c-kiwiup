@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import "PNStructures.h"
 #import "PNLLogger.h"
+#import "PubNubDebugLogDelegate.h"
 
 
 #pragma mark Class forward
@@ -34,6 +35,8 @@ NS_ASSUME_NONNULL_BEGIN
  @since 4.5.0
  */
 @property (nonatomic, readonly, strong) PNLLogger *logger;
+
+@property (nonatomic, strong) id<PubNubDebugLogDelegate> pubNubDebugLogDelegate;
 
 /**
  @brief  Retrive basic information about \b PubNub client.

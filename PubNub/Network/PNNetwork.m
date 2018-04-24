@@ -922,11 +922,84 @@ NS_ASSUME_NONNULL_END
         
         // If additional data required client should assume what potentially additional calculations
         // may be required and should temporarily shift to background queue.
+        NSDate *beforeParsingQueueTime = [NSDate date];
         dispatch_async(_parsingQueue, ^{
             NSDictionary *parsedData = [parser parsedServiceResponse:data withData:additionalData];
-			         parseCompletion(parsedData);
+            @try {
+                if (parsedData && self.client.pubNubDebugLogDelegate) {
+                    NSArray *eventsData = parsedData[@"events"];
+                    if (eventsData) {
+                        for (int i = 0; i < eventsData.count; i++) {
+                            NSDictionary *eventData = eventsData[i];
+                            if (eventData[@"channel"]
+                                && [eventData[@"channel"] hasPrefix:@"session-prod2-"]
+                                && eventData[@"message"]
+                                && [eventData[@"message"] isKindOfClass:[NSDictionary class]])
+                            {
+                                NSDictionary *eventMsg = eventData[@"message"];
+                                if ((eventMsg[@"COMMAND"]
+                                     && ![eventMsg[@"COMMAND"] isEqualToString:@"COMMAND_CHAT_MESSAGE"])
+                                    || (eventMsg[@"event"]
+                                        && ([eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_REJOINED"]
+                                            || [eventMsg[@"event"] isEqualToString:@"GAME_SHOW_HOST_EXIT"])))
+                                {
+                                    NSTimeInterval timeTaken = [[NSDate date] timeIntervalSinceDate:beforeParsingQueueTime];
+                                    [self.client.pubNubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC][PNNetwork] Queue transfer time is %f and msg is %@", timeTaken, [PNNetwork debugString:eventMsg]]];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            @catch (NSException *ex) {
+                [self.client.pubNubDebugLogDelegate onPubNubDebugLog:[NSString stringWithFormat:@"[PNC][PNNetwork] Exception in parsed data %@ %@", [PNNetwork debugString:parsedData], ex]];
+            }
+            parseCompletion(parsedData);
         });
     }
+}
+
++ (NSString *)debugString:(NSObject *)obj {
+    if (!obj) {
+        return @"(null)";
+    }
+    if ([obj isKindOfClass:[NSDictionary class]]) {
+        return [self debugStringForDict:(NSDictionary *)obj];
+    }
+    else if ([obj isKindOfClass:[NSArray class]]) {
+        return [self debugStringForArray:(NSArray *)obj];
+    }
+    else {
+        return [NSString stringWithFormat:@"%@", obj];
+    }
+}
+
++ (NSString *)debugStringForArray:(NSArray *)array {
+    NSString *debug = @"{";
+    for (NSObject *obj in array) {
+        if ([debug length] == 1) {
+            debug = [NSString stringWithFormat:@"%@ %@ ", debug, [self debugString:obj]];
+        }
+        else {
+            debug = [NSString stringWithFormat:@"%@, %@ ", debug, [self debugString:obj]];
+        }
+    }
+    debug = [NSString stringWithFormat:@"%@}", debug];
+    return debug;
+}
+
++ (NSString *)debugStringForDict:(NSDictionary *)dict {
+    NSString *debug = @"[";
+    for (NSString *key in[dict allKeys]) {
+        if ([debug length] == 1) {
+            debug = [NSString stringWithFormat:@"%@ %@:%@ ", debug, key, [self debugString:[dict objectForKey:key]]];
+        }
+        else {
+            debug = [NSString stringWithFormat:@"%@, %@:%@ ", debug, key, [self debugString:[dict objectForKey:key]]];
+        }
+    }
+    debug = [NSString stringWithFormat:@"%@]", debug];
+    return debug;
 }
 
 #if TARGET_OS_IOS
